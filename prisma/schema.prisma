@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  passwordHash      String
+  fullName          String?
+  role              UserRole  @default(USER)
+  isVerified        Boolean   @default(false)
+  verificationCode  String?
+  resetToken        String?
+  resetTokenExpires DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  conversations Conversation[]
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String?
+  category  String?
+  status    String   @default("active")
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  role           MessageRole
+  content        String
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+model LegalDocument {
+  id        String   @id @default(uuid())
+  title     String
+  category  String
+  version   String?
+  sourceUrl String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chunks DocumentChunk[]
+}
+
+model DocumentChunk {
+  id            String   @id @default(uuid())
+  documentId    String
+  sectionHeader String?
+  content       String
+  metadata      Json?
+
+  embedding Unsupported("vector(384)")?
+
+  document LegalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
