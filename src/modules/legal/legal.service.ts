@@ -1,5 +1,6 @@
 import prisma from "../../config/prisma";
 import { UploadDocumentBody } from "./legal.validation";
+import { queueService } from "../../queue/services/queue.service";
 
 export class LegalService {
   async uploadDocument(
@@ -15,7 +16,11 @@ export class LegalService {
       },
     });
 
-    console.log("PDF received:", fileBuffer.length, "bytes");
+    await queueService.addLegalDocumentJob({
+      documentId: document.id,
+      fileBase64: fileBuffer.toString("base64"),
+      title: data.title,
+    });
 
     return document;
   }
