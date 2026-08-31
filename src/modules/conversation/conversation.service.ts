@@ -1,4 +1,7 @@
 import prisma from "../../config/prisma";
+import { AIOrchestrator } from "../../ai/orchestrator/ai-orchestrator";
+
+const aiOrchestrator = new AIOrchestrator();
 
 export class ConversationService {
   async createConversation(
@@ -65,6 +68,16 @@ async sendMessage(
     },
   });
 
-  return userMessage;
+ const aiResponse = await aiOrchestrator.generateResponse(content)
+const assistantMessage = await prisma.message.create({
+  data: {
+    conversationId,
+    role: "ASSISTANT",
+    content: aiResponse.content,
+  },
+});
+return assistantMessage;
 }
+
+
 }
