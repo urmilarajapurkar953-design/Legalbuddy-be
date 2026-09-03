@@ -79,7 +79,7 @@ model DocumentChunk {
   content       String
   metadata      Json?
 
-  embedding Unsupported("vector(384)")?
+  embedding Unsupported("vector(3072)")?
 
   document LegalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
 }
