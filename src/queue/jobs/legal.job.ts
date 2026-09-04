@@ -3,6 +3,7 @@ import { PDFParse } from "pdf-parse";
 import logger from "../../common/logger";
 import { embeddingService } from "../../common/utils/embeddings";
 import prisma from "../../config/prisma";
+import { v4 as uuidv4 } from "uuid";
 
 export interface LegalJobData {
   documentId: string;
@@ -31,8 +32,10 @@ export const processLegalDocument = async (
       "Starting PDF processing",
     );
 
+    // Convert Base64 back into PDF Buffer
     const fileBuffer = Buffer.from(fileBase64, "base64");
 
+    // Parse the PDF
     const parser = new PDFParse({
       data: fileBuffer,
     });
@@ -45,30 +48,38 @@ export const processLegalDocument = async (
       throw new Error("Could not extract text from PDF");
     }
 
+    // Split extracted text into chunks
     const chunks = createChunks(content);
 
     console.log("Total chunks:", chunks.length);
 
+    // Generate embedding and save each chunk
     for (const chunk of chunks) {
-      const embedding = await embeddingService.generate(chunk);
+  const embedding = await embeddingService.generate(chunk);
 
-      console.log("Embedding length:", embedding.length);
+  console.log("Embedding length:", embedding.length);
 
-      await prisma.$executeRaw`
-        INSERT INTO "DocumentChunk" (
-          "documentId",
-          "content",
-          "embedding"
-        )
-        VALUES (
-          ${documentId},
-          ${chunk},
-          ${embedding}::vector
-        )
-      `;
-        console.log("Chunk saved successfully");
+  const embeddingVector = `[${embedding.join(",")}]`;
 
-    }
+  const chunkId = uuidv4();
+
+  await prisma.$executeRaw`
+    INSERT INTO "DocumentChunk" (
+      "id",
+      "documentId",
+      "content",
+      "embedding"
+    )
+    VALUES (
+      ${chunkId},
+      ${documentId},
+      ${chunk},
+      ${embeddingVector}::vector
+    )
+  `;
+
+  console.log("Chunk saved successfully");
+}
 
     logger.info(
       {
@@ -79,7 +90,6 @@ export const processLegalDocument = async (
       },
       "PDF processed and chunks stored successfully",
     );
-
   } catch (error) {
     logger.error(
       { error, documentId },
