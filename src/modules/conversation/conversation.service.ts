@@ -1,7 +1,5 @@
 import prisma from "../../config/prisma";
-import { AIOrchestrator } from "../../ai/orchestrator/ai-orchestrator";
-
-const aiOrchestrator = new AIOrchestrator();
+import { ragService } from "../../ai/rag/rag.service";
 
 export class ConversationService {
   async createConversation(
@@ -21,33 +19,69 @@ export class ConversationService {
   }
 
   async getUserConversations(userId: string) {
-  const conversations = await prisma.conversation.findMany({
-    where: {
+    const conversations = await prisma.conversation.findMany({
+      where: {
+        userId,
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+    });
+
+    return conversations;
+  }
+
+  async getConversationById(
+    userId: string,
+    conversationId: string,
+  ) {
+    const conversation =
+      await prisma.conversation.findFirst({
+        where: {
+          id: conversationId,
+          userId,
+        },
+        include: {
+          messages: {
+            orderBy: {
+              createdAt: "asc",
+            },
+          },
+        },
+      });
+
+    return conversation;
+  }
+
+  async sendMessage(
+    userId: string,
+    conversationId: string,
+    content: string,
+  ) {
+    const conversation =
+      await prisma.conversation.findFirst({
+        where: {
+          id: conversationId,
+          userId,
+        },
+      });
+
+    if (!conversation) {
+      throw new Error("Conversation not found");
+    }
+
+    const result = await ragService.answerQuestion(
+      content,
       userId,
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
-  });
+      conversationId,
+    );
 
-  return conversations;
-}
+    return result;
+  }
 
- async getConversationById(userId: string, conversationId: string) {
-  const conversation = await prisma.conversation.findFirst({
-    where: {
-      id: conversationId,
-      userId,
-    },
-  });
-
-  return conversation;
-}
-
-async sendMessage(
+  async deleteConversation(
   userId: string,
   conversationId: string,
-  content: string,
 ) {
   const conversation = await prisma.conversation.findFirst({
     where: {
@@ -60,24 +94,14 @@ async sendMessage(
     throw new Error("Conversation not found");
   }
 
-  const userMessage = await prisma.message.create({
-    data: {
-      conversationId,
-      role: "USER",
-      content,
+  await prisma.conversation.delete({
+    where: {
+      id: conversationId,
     },
   });
 
- const aiResponse = await aiOrchestrator.generateResponse(content)
-const assistantMessage = await prisma.message.create({
-  data: {
-    conversationId,
-    role: "ASSISTANT",
-    content: aiResponse.content,
-  },
-});
-return assistantMessage;
+  return {
+    message: "Conversation deleted successfully",
+  };
 }
-
-
 }
