@@ -1,5 +1,6 @@
 import {Request, Response} from "express";
 import { AuthService } from "./auth.service";
+import { AuthRequest } from "../../common/middleware/auth.middleware";
 
 const authService = new AuthService();
 
@@ -41,5 +42,10 @@ export class AuthController{
             token: result.token,
         });
     }
+    static me = async (req: AuthRequest, res: Response) => {
+  return res.status(200).json({
+    user: req.user,
+  });
+};
 
 }
