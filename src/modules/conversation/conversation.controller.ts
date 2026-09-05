@@ -78,6 +78,21 @@ static sendMessage = async (
   
 };
 
+static delete = async (
+  req: AuthRequest & { params: { id: string } },
+  res: Response,
+) => {
+  const userId = req.user!.id;
+  const conversationId = req.params.id;
+
+  const result =
+    await conversationService.deleteConversation(
+      userId,
+      conversationId,
+    );
+
+  return res.status(200).json(result);
+};
 
 
 }
